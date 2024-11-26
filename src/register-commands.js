@@ -59,6 +59,18 @@ const commands = [
       },
     ],
   },
+  {
+    name: "autorole-setup",
+    description: "Configure o cargo automático no servidor",
+    options: [
+      {
+        name: "role",
+        description: "Cargo que será atribuido aos novos membros",
+        type: ApplicationCommandOptionType.Role,
+        required: true,
+      },
+    ],
+  },
 ];
 
 const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);

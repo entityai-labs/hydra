@@ -7,7 +7,6 @@ const {
   PermissionFlagsBits,
   ButtonBuilder,
   ButtonStyle,
-  ActionRow,
   ActionRowBuilder,
 } = require("discord.js");
 const { loadDatabase, saveDatabase } = require("./sql.js");
@@ -41,23 +40,32 @@ client.on(Events.ClientReady, async (c) => {
 
 client.on(Events.GuildMemberAdd, async (member) => {
   try {
-    const stmt = db.prepare(
+    const welcomeChannelQuery = db.prepare(
       `SELECT channel_id FROM welcome WHERE guild_id = ?`
     );
-    const result = stmt.getAsObject([member.guild.id]);
-    const memberRole = member.guild.roles.cache.get("1310084598989983788");
+    const resultWelcomeChannel = welcomeChannelQuery.getAsObject([
+      member.guild.id,
+    ]);
 
-    if (result.channel_id) {
-      const channel = await member.guild.channels.fetch(result.channel_id);
-      if (!channel) return;
+    const roleIdQuery = db.prepare(
+      `SELECT role_id FROM autorole WHERE guild_id = ?`
+    );
+    const resultRoleId = roleIdQuery.getAsObject([member.guild.id]);
+
+    if (resultWelcomeChannel.channel_id) {
+      const channel = await member.guild.channels.fetch(
+        resultWelcomeChannel.channel_id
+      );
+      const memberRole = member.guild.roles.cache.get(resultRoleId.role_id);
+      if (!channel || !memberRole) return;
 
       await member.roles.add(memberRole);
       channel.send(`Bem-vindo ao servidor <@${member.user.id}>!`);
     } else {
-      console.error(`Canal não existe ou foi removido.`);
+      console.error("SZLA")
     }
   } catch (error) {
-    console.error(error);
+    console.error(error)
   }
 });
 
@@ -91,9 +99,7 @@ client.on(Events.MessageCreate, async (message) => {
           });
         }
       }
-    } else {
-      console.log("Nenhuma palavra proibida encontrada no banco de dados.");
-    }
+    } 
   } catch (error) {
     console.error("Erro:", error);
   }
@@ -101,6 +107,35 @@ client.on(Events.MessageCreate, async (message) => {
 
 client.on(Events.InteractionCreate, async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
+
+  if (interaction.commandName === "autorole-setup") {
+    if (!hasPermission(interaction, PermissionFlagsBits.Administrator)) return;
+
+    const role = interaction.options.getRole("role");
+
+    try {
+      db.run(
+        `INSERT INTO autorole (guild_id, role_id, role)
+         VALUES (?, ?, ?)
+         ON CONFLICT(guild_id)
+         DO UPDATE SET role_id = excluded.role_id, role = excluded.role;`,
+        [interaction.guild.id, role.id, role.name]
+      );
+
+      saveDatabase(db);
+
+      const embed = new EmbedBuilder().setColor("Random").setDescription(`
+        Auto-role configurado e salvo com sucesso no banco de dados.
+  
+        Role atual: <@&${role.id}>
+        Data: \`\`${role.createdAt}\`\`
+      `);
+
+      interaction.reply({ embeds: [embed] });
+    } catch (error) {
+      console.error(error);
+    }
+  }
 
   if (interaction.commandName === "animals") {
     const animal = interaction.options.getString("type");

@@ -14,6 +14,7 @@ const loadDatabase = async () => {
     db = new SQL.Database();
     db.run(
       `
+      CREATE TABLE IF NOT EXISTS autorole (guild_id TEXT PRIMARY KEY, role_id TEXT NOT NULL, role TEXT UNIQUE);
       CREATE TABLE IF NOT EXISTS welcome (guild_id TEXT PRIMARY KEY, channel_id TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS word_filter (id INTEGER PRIMARY KEY AUTOINCREMENT, word TEXT UNIQUE);
       `
