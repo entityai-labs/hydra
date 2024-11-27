@@ -17,6 +17,7 @@ const getAnimalData = require("./utils/getAnimalData.js");
 const { handleStatus } = require("./status.js");
 
 require("dotenv").config();
+const port = process.env.PORT || 3000;
 
 const client = new Client({
   intents: [
@@ -33,12 +34,12 @@ const client = new Client({
 let db;
 
 const fastify = Fastify();
-fastify.listen({ port: 3000 }, function (err, address) {
+fastify.listen({ port: port }, function (err, address) {
   if (err) {
     fastify.log.error(err)
     process.exit(1)
   }
-  // Server is now listening on ${address}
+  coonsole.log(`Server is now listening on ${address}`)
 })
 
 client.on(Events.ClientReady, async (c) => {
