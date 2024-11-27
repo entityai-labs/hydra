@@ -39,7 +39,7 @@ fastify.listen({ port: port }, function (err, address) {
     fastify.log.error(err)
     process.exit(1)
   }
-  coonsole.log(`Server is now listening on ${address}`)
+  console.log(`Server is now listening on ${address}`)
 })
 
 client.on(Events.ClientReady, async (c) => {
