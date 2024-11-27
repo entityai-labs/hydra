@@ -8,6 +8,7 @@ const {
   ButtonBuilder,
   ButtonStyle,
   ActionRowBuilder,
+  Colors,
 } = require("discord.js");
 const { loadDatabase, saveDatabase } = require("./sql.js");
 const hasPermission = require("./utils/hasPermission.js");
@@ -32,12 +33,12 @@ const client = new Client({
 let db;
 
 const fastify = Fastify();
-fastify.listen(3000, (err, address) => {
-  if(err) {
-    console.error(err)
+fastify.listen({ port: 3000 }, function (err, address) {
+  if (err) {
+    fastify.log.error(err)
+    process.exit(1)
   }
-
-  console.log(`HTTP server running on ${address}`)
+  // Server is now listening on ${address}
 })
 
 client.on(Events.ClientReady, async (c) => {
@@ -97,7 +98,7 @@ client.on(Events.MessageCreate, async (message) => {
             .catch((err) => console.error("Erro ao deletar a mensagem:", err));
 
           const embed = new EmbedBuilder()
-            .setColor("Random")
+            .setColor("#2F3136")
             .setDescription(
               `:warning: Não é permitido dizer isso aqui seu bunda mole.`
             );
@@ -133,7 +134,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
       saveDatabase(db);
 
-      const embed = new EmbedBuilder().setColor("Random").setDescription(`
+      const embed = new EmbedBuilder().setColor("#2F3136").setDescription(`
         Auto-role configurado e salvo com sucesso no banco de dados.
   
         Role atual: <@&${role.id}>
@@ -148,7 +149,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
   if (interaction.commandName === "animals") {
     const animal = interaction.options.getString("type");
-    const embed = new EmbedBuilder().setColor("Default");
+    const embed = new EmbedBuilder().setColor("#2F3136");
 
     try {
       let imageUrl;
@@ -202,7 +203,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       saveDatabase(db);
 
       const embed = new EmbedBuilder()
-        .setColor("Random")
+        .setColor("#2F3136")
         .setDescription(
           `<:Minecraft:1310372150586249237> A palavra **${word}** foi inserida com sucesso no banco de dados.`
         );
@@ -248,7 +249,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         text: `Request by ${interaction.user.globalName}`,
         iconURL: interaction.user.displayAvatarURL(),
       })
-      .setColor("Random")
+      .setColor("#2F3136")
       .setDescription(
         `
     <:minecraftlogopng2:1310356302811238482> **Java Edition:** \`play.hydra-mc.xyz\`
