@@ -11,7 +11,7 @@ const {
 } = require("discord.js");
 const { loadDatabase, saveDatabase } = require("./sql.js");
 const hasPermission = require("./utils/hasPermission.js");
-const debugMessage = require("./utils/debugMessage.js");
+const Fastify = require("fastify")
 const getAnimalData = require("./utils/getAnimalData.js");
 const { handleStatus } = require("./status.js");
 
@@ -30,6 +30,15 @@ const client = new Client({
 
 /** @type {import("sql.js").Database} */
 let db;
+
+const fastify = Fastify();
+fastify.listen(3000, (err, address) => {
+  if(err) {
+    console.error(err)
+  }
+
+  console.log(`HTTP server running on ${address}`)
+})
 
 client.on(Events.ClientReady, async (c) => {
   db = await loadDatabase();
@@ -179,7 +188,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         components: [row],
       });
     } catch (error) {
-      debugMessage(client, error);
+      console.error(error)
     }
   }
 
@@ -199,7 +208,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         );
       interaction.reply({ embeds: [embed] });
     } catch (error) {
-      debugMessage(client, error);
+      console.error(error)
     }
   }
 
@@ -229,7 +238,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         ephemeral: true,
       });
     } catch (error) {
-      debugMessage(client, error);
+      console.error(error)
     }
   }
 
