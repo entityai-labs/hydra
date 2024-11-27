@@ -31,6 +31,8 @@ const client = new Client({
 /** @type {import("sql.js").Database} */
 let db;
 
+console.log("asdsd")
+
 client.on(Events.ClientReady, async (c) => {
   db = await loadDatabase();
   handleStatus(client);
