@@ -2,10 +2,6 @@ const { ActivityType, Client } = require("discord.js");
 
 const statusList = [
   {
-    name: "Nah, I'd Win",
-    type: ActivityType.Watching,
-  },
-  {
     name: "/help",
     type: ActivityType.Playing,
   },

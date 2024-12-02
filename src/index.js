@@ -8,11 +8,10 @@ const {
   ButtonBuilder,
   ButtonStyle,
   ActionRowBuilder,
-  Colors,
 } = require("discord.js");
 const { loadDatabase, saveDatabase } = require("./sql.js");
 const hasPermission = require("./utils/hasPermission.js");
-const Fastify = require("fastify")
+const express = require("express")
 const getAnimalData = require("./utils/getAnimalData.js");
 const { handleStatus } = require("./status.js");
 
@@ -33,13 +32,14 @@ const client = new Client({
 /** @type {import("sql.js").Database} */
 let db;
 
-const fastify = Fastify();
-fastify.listen({ port: port }, function (err, address) {
-  if (err) {
-    fastify.log.error(err)
-    process.exit(1)
-  }
-  console.log(`Server is now listening on ${address}`)
+const app = express()
+
+app.get('/', (req, res) => {
+  res.send('The bot is running!')
+})
+
+app.listen(port, () => {
+  console.log(`Example app listening on port ${port}`)
 })
 
 client.on(Events.ClientReady, async (c) => {
