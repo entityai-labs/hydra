@@ -20,7 +20,7 @@ const getRandomExp = require("./utils/getRandomExp.js");
 const Level = require("./models/Level.js");
 const calculateLevel = require("./utils/calculateLevel.js");
 const connectDB = require("./config/database.js");
-const { RankCardBuilder, Font } = require("canvacord");
+const { RankCardBuilder, Font, LeaderboardBuilder } = require("canvacord");
 
 require("dotenv").config();
 const port = process.env.PORT || 3000;
@@ -79,14 +79,12 @@ client.on("guildMemberAdd", async (member) => {
       .setDisplayName(member.user.globalName)
       .setMessage(`Bem-vindo(a) ao HydraMC!`);
 
-    const card = await greetingsCard.build()
+    const card = await greetingsCard.build();
     let attachment = new AttachmentBuilder(card, {
-      name: "welcome.png"
-    })
+      name: "welcome.png",
+    });
 
-
-
-    channel.send(({ files: [attachment] }));
+    channel.send({ files: [attachment] });
   } catch (error) {
     console.error(error);
   }
@@ -350,7 +348,7 @@ client.on("interactionCreate", async (interaction) => {
       .setStatus(userObj.presence ? userObj.presence.status : "offline");
 
     const rankCard = await rankCardBuilder.build();
-    console.log(rankCardBuilder)
+    console.log(rankCardBuilder);
 
     const attachment = new AttachmentBuilder(rankCard);
     const mentionedUser = "<@" + interaction.user.id + ">";
@@ -359,6 +357,59 @@ client.on("interactionCreate", async (interaction) => {
       content: mentionedUser,
       files: [attachment],
     });
+  }
+
+  if (interaction.commandName === "ranking") {
+    try {
+      const ranking = await Level.find({ guildId: interaction.guild.id })
+        .sort({ level: -1, xp: -1 })
+        .limit(5);
+
+      if (ranking.length === 0) {
+        return interaction.reply("O ranking não foi atualizado ou não existe.");
+      }
+
+      const players = await Promise.all(
+        ranking.map(async (player, index) => {
+          const member = await interaction.guild.members.fetch(player.userId);
+
+          return {
+            avatar: member?.user.displayAvatarURL({ size: 128 }) || "",
+            username: member?.user.username || "unknown",
+            displayName: member?.displayName || "null",
+            level: player.level,
+            xp: player.xp,
+            rank: index + 1,
+          };
+        })
+      );
+
+      Font.loadDefault();
+      const rankingCard = new LeaderboardBuilder()
+        .setBackground(
+          "https://images.rawpixel.com/image_800/cHJpdmF0ZS9sci9pbWFnZXMvd2Vic2l0ZS8yMDI0LTAzL3Jhd3BpeGVsX29mZmljZV81M19hX21pbmltYWxfYW5kX2xlc3NfZGV0YWlsX2lsbHVzdHJhdGlvbl9vZl9jaF8xN2NmMTIxNy1kNDM0LTRjYTYtYjIxYy04ZmQyMjQxMjlkN2EuanBn.jpg"
+        )
+        .setHeader({
+          title: interaction.guild.name,
+          image: interaction.guild.iconURL({ size: 256 }),
+          subtitle: `${interaction.guild.memberCount} membros`,
+        })
+        .setPlayers(players);
+
+      rankingCard.setVariant("default");
+      const image = await rankingCard.build({
+        format: "png",
+      });
+      const attachment = new AttachmentBuilder(image, {
+        name: "leaderboard.png",
+      });
+
+      await interaction.reply({
+        files: [attachment],
+      });
+    } catch (error) {
+      console.log(error);
+    }
   }
 });
 

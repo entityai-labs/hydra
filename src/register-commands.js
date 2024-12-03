@@ -9,6 +9,10 @@ const {
 
 const commands = [
   {
+    name: "ranking",
+    description: "Visualizar o ranking dos membros"
+  },
+  {
     name: "ip",
     description: "Retorna o IP do servidor",
   },
