@@ -9,11 +9,16 @@ const {
   ButtonStyle,
   ActionRowBuilder,
 } = require("discord.js");
-const { loadDatabase, saveDatabase } = require("./sql.js");
 const hasPermission = require("./utils/hasPermission.js");
-const express = require("express")
+const express = require("express");
 const getAnimalData = require("./utils/getAnimalData.js");
 const { handleStatus } = require("./status.js");
+const Welcome = require("./models/Welcome.js");
+const WordFilter = require("./models/WordFilter.js");
+const getRandomExp = require("./utils/getRandomExp.js");
+const Level = require("./models/Level.js");
+const calculateLevel = require("./utils/calculateLevel.js");
+const connectDB = require("./config/database.js");
 
 require("dotenv").config();
 const port = process.env.PORT || 3000;
@@ -29,94 +34,114 @@ const client = new Client({
   ],
 });
 
-/** @type {import("sql.js").Database} */
-let db;
+const app = express();
 
-const app = express()
-
-app.get('/', (req, res) => {
-  res.send('The bot is running!')
-})
+app.get("/", (req, res) => {
+  res.send("The bot is running!");
+});
 
 app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`)
-})
+  console.log(`Example app listening on port ${port}`);
+});
 
-client.on(Events.ClientReady, async (c) => {
-  db = await loadDatabase();
+client.on("ready", async (c) => {
+  await connectDB();
   handleStatus(client);
 
-  console.log(`✅️ Bot connected as ${c.user.username}`);
+  console.log(`Bot connected as ${c.user.username}!`);
 });
 
-client.on(Events.GuildMemberAdd, async (member) => {
+client.on("guildMemberAdd", async (member) => {
   try {
-    const welcomeChannelQuery = db.prepare(
-      `SELECT channel_id FROM welcome WHERE guild_id = ?`
-    );
-    const resultWelcomeChannel = welcomeChannelQuery.getAsObject([
-      member.guild.id,
-    ]);
+    const welcome = await Welcome.findOne({ guildId: member.guild.id });
+    if (!welcome) {
+      console.error("You need to setup Welcome Data.");
+      return;
+    }
 
-    const roleIdQuery = db.prepare(
-      `SELECT role_id FROM autorole WHERE guild_id = ?`
-    );
-    const resultRoleId = roleIdQuery.getAsObject([member.guild.id]);
+    const channel = await member.guild.channels.fetch(welcome.welcomeChannel);
+    const role = member.guild.roles.cache.get(welcome.roleId);
 
-    if (resultWelcomeChannel.channel_id) {
-      const channel = await member.guild.channels.fetch(
-        resultWelcomeChannel.channel_id
-      );
-      const memberRole = member.guild.roles.cache.get(resultRoleId.role_id);
-      if (!channel || !memberRole) return;
+    if (!channel || !role) {
+      console.error(`Role or channel not found`);
+      return;
+    }
 
-      await member.roles.add(memberRole);
-      channel.send(`Bem-vindo ao servidor <@${member.user.id}>!`);
+    await member.roles.add(role);
+
+    channel.send(`Bem-vindo ao servidor, <@${member.user.id}>!`);
+  } catch (error) {
+    console.error(error);
+  }
+});
+
+client.on("messageCreate", async (message) => {
+  if (message.author.bot || !message.inGuild()) return;
+
+  const randomExp = getRandomExp(5, 15);
+
+  try {
+    const userLevel = await Level.findOne({
+      guildId: message.guild.id,
+      userId: message.author.id,
+    });
+
+    if (userLevel) {
+      userLevel.xp += randomExp;
+
+      if (userLevel.xp > calculateLevel(userLevel.level)) {
+        userLevel.xp = 0;
+        userLevel.level += 1;
+
+        message.channel.send(
+          `${message.member} **Parabéns, você subiu para o level ${userLevel.level}!**`
+        );
+      }
+
+      await userLevel.save().catch((e) => {
+        console.log(`Erro ao salvar nível do usuário: ${e}`);
+      });
     } else {
-      console.error("SZLA")
+      const newUserLevel = await Level.create({
+        userId: message.author.id,
+        guildId: message.guild.id,
+        xp: randomExp,
+      });
+
+      await newUserLevel.save();
     }
   } catch (error) {
-    console.error(error)
+    console.error(error);
   }
-});
-
-client.on(Events.MessageCreate, async (message) => {
-  if (message.author.bot) return;
-
-  const db = await loadDatabase();
 
   try {
-    const query = "SELECT word FROM word_filter";
-    const result = db.exec(query);
+    const wordFilter = await WordFilter.findOne({ guildId: message.guild.id });
+    if (!wordFilter || wordFilter.words.length === 0) return;
 
-    if (result.length > 0) {
-      let words = result[0].values.map((row) => row[0]);
+    const forbiddenWords = wordFilter.words.map((r) => r.word.toLowerCase());
+    const userMessage = message.content.toLowerCase();
 
-      for (const word of words) {
-        if (message.content.toLowerCase().includes(word)) {
-          await message
-            .delete()
-            .catch((err) => console.error("Erro ao deletar a mensagem:", err));
+    for (const word of forbiddenWords) {
+      if (userMessage.includes(word)) {
+        await message.delete();
 
-          const embed = new EmbedBuilder()
-            .setColor("#2F3136")
-            .setDescription(
-              `:warning: Não é permitido dizer isso aqui seu bunda mole.`
-            );
+        const embed = new EmbedBuilder()
+          .setColor("#2B2D31")
+          .setDescription(`:warning: Não é permitido dizer isso aqui.`);
 
-          message.channel.send({
-            content: `<@${message.author.id}>`,
-            embeds: [embed],
-          });
-        }
+        await message.channel.send({
+          content: `<@${message.author.id}>`,
+          embeds: [embed],
+        });
+        return;
       }
-    } 
+    }
   } catch (error) {
-    console.error("Erro:", error);
+    console.error(error);
   }
 });
 
-client.on(Events.InteractionCreate, async (interaction) => {
+client.on("interactionCreate", async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
 
   if (interaction.commandName === "autorole-setup") {
@@ -125,22 +150,18 @@ client.on(Events.InteractionCreate, async (interaction) => {
     const role = interaction.options.getRole("role");
 
     try {
-      db.run(
-        `INSERT INTO autorole (guild_id, role_id, role)
-         VALUES (?, ?, ?)
-         ON CONFLICT(guild_id)
-         DO UPDATE SET role_id = excluded.role_id, role = excluded.role;`,
-        [interaction.guild.id, role.id, role.name]
-      );
+      const welcome = await Welcome.findOne({ guildId: interaction.guild.id });
+      if (!welcome) {
+        console.error(`Welcome data does not exists`);
+        return;
+      }
 
-      saveDatabase(db);
+      welcome.roleId = role.id;
+      await welcome.save();
 
-      const embed = new EmbedBuilder().setColor("#2F3136").setDescription(`
-        Auto-role configurado e salvo com sucesso no banco de dados.
-  
-        Role atual: <@&${role.id}>
-        Data: \`\`${role.createdAt}\`\`
-      `);
+      const embed = new EmbedBuilder()
+        .setColor("#2B2D31")
+        .setDescription("Auto-role configurado e salvo.");
 
       interaction.reply({ embeds: [embed] });
     } catch (error) {
@@ -150,7 +171,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
   if (interaction.commandName === "animals") {
     const animal = interaction.options.getString("type");
-    const embed = new EmbedBuilder().setColor("#2F3136");
+    const embed = new EmbedBuilder().setColor("#2B2D31");
 
     try {
       let imageUrl;
@@ -160,7 +181,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
         case "fox": {
           const foxData = await getAnimalData("https://randomfox.ca/floof");
           imageUrl = foxData.image;
-          description = `<@${interaction.user.id}> What does the fox say? 🦊 Aqui está uma raposa estilosa!`;
+          embed.setTitle(
+            `<@${interaction.user.id}> **What does the fox say? 🦊 Aqui está uma raposa estilosa!**`
+          );
           embed.setImage(imageUrl);
           break;
         }
@@ -169,12 +192,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
             "https://api.thecatapi.com/v1/images/search"
           );
           imageUrl = catData[0].url;
-          description = `<@${interaction.user.id}> Meooow! 🐱 Aqui está um gatinho para alegrar o seu dia!`;
+          embed.setTitle(
+            `<@${interaction.user.id}> **Meooow! 🐱 Aqui está um gatinho para alegrar o seu dia!**`
+          );
           embed.setImage(imageUrl);
           break;
         }
         default:
-          await interaction.reply("Tipo de animal inválido.");
           return;
       }
 
@@ -190,7 +214,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         components: [row],
       });
     } catch (error) {
-      console.error(error)
+      console.error(error);
     }
   }
 
@@ -200,17 +224,20 @@ client.on(Events.InteractionCreate, async (interaction) => {
     const word = interaction.options.getString("word");
 
     try {
-      db.run(`INSERT INTO word_filter (word) VALUES (?);`, [word]);
-      saveDatabase(db);
+      await WordFilter.findOneAndUpdate(
+        { guildId: interaction.guild.id },
+        { $addToSet: { words: { word } } },
+        { upsert: true, new: true }
+      );
 
       const embed = new EmbedBuilder()
-        .setColor("#2F3136")
+        .setColor("#2B2D31")
         .setDescription(
           `<:Minecraft:1310372150586249237> A palavra **${word}** foi inserida com sucesso no banco de dados.`
         );
       interaction.reply({ embeds: [embed] });
     } catch (error) {
-      console.error(error)
+      console.error(error);
     }
   }
 
@@ -228,19 +255,21 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
 
     try {
-      db.run(
-        `INSERT INTO welcome (guild_id, channel_id) VALUES (?,?) ON CONFLICT(guild_id) DO UPDATE SET channel_id = excluded.channel_id`,
-        [interaction.guild.id, channel.id]
+      await Welcome.findOneAndUpdate(
+        { guildId: interaction.guild.id },
+        { guildId: interaction.guild.id, welcomeChannel: channel.id },
+        { upsert: true, new: true }
       );
 
-      saveDatabase(db);
+      const embed = new EmbedBuilder()
+        .setColor("#2B2D31")
+        .setDescription("Canal de boas-vindas configurado e salvo.");
 
       interaction.reply({
-        content: `Canal de boas-vindas configurado e salvo no banco de dados: <#${channel.id}>`,
-        ephemeral: true,
+        embeds: [embed],
       });
     } catch (error) {
-      console.error(error)
+      console.error(error);
     }
   }
 
@@ -250,7 +279,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         text: `Request by ${interaction.user.globalName}`,
         iconURL: interaction.user.displayAvatarURL(),
       })
-      .setColor("#2F3136")
+      .setColor("#2B2D31")
       .setDescription(
         `
     <:minecraftlogopng2:1310356302811238482> **Java Edition:** \`play.hydra-mc.xyz\`
@@ -260,9 +289,40 @@ client.on(Events.InteractionCreate, async (interaction) => {
     `
       );
 
-    const message = `Olá <@${interaction.user.id}> aqui está uma lista de nossos IPs:`;
+    interaction.reply({ embeds: [embed] });
+  }
 
-    interaction.reply({ content: message, embeds: [embed] });
+  if (interaction.commandName === "level") {
+    if (!interaction.inGuild()) {
+      interaction.reply("Esse comando só pode ser executado dentro da guilda.");
+      return;
+    }
+
+    await interaction.deferReply();
+
+    const optionUserId = interaction.options.get("member")?.value;
+    const userId = optionUserId || interaction.user.id;
+    const userObj = await interaction.guild.members.fetch(userId);
+
+    const guildId = interaction.guild.id;
+
+    const userLevel = await Level.findOne({
+      userId,
+      guildId,
+    });
+
+    if (!userLevel) {
+      interaction.editReply(
+        optionUserId
+          ? `${userObj.user.tag} não possui nenhum level ainda.`
+          : "Você não possui nenhum level."
+      );
+      return;
+    }
+
+    interaction.editReply({
+      content: `**O level atual de ${userObj.user.username} é ${userLevel.level}.**`,
+    });
   }
 });
 

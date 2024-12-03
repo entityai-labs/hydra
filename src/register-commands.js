@@ -71,6 +71,18 @@ const commands = [
       },
     ],
   },
+  {
+    name: "level",
+    description: "Ver o level de si mesmo ou algum membro",
+    options: [
+      {
+        name: "member",
+        description: "Membro da guilda",
+        type: ApplicationCommandOptionType.Mentionable,
+        required: false,
+      },
+    ],
+  },
 ];
 
 const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
