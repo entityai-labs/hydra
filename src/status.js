@@ -18,4 +18,4 @@ const handleStatus = (client) => {
   }, 10000);
 };
 
-module.exports = { handleStatus };
+module.exports = handleStatus;

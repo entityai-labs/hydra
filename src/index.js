@@ -1,24 +1,26 @@
 const {
   Client,
   GatewayIntentBits,
-  Events,
   EmbedBuilder,
   ChannelType,
   PermissionFlagsBits,
   ButtonBuilder,
   ButtonStyle,
   ActionRowBuilder,
+  AttachmentBuilder,
 } = require("discord.js");
 const hasPermission = require("./utils/hasPermission.js");
+const GreetingsCard = require("./classes/GreetingsCard.js");
 const express = require("express");
 const getAnimalData = require("./utils/getAnimalData.js");
-const { handleStatus } = require("./status.js");
+const handleStatus = require("./status.js");
 const Welcome = require("./models/Welcome.js");
 const WordFilter = require("./models/WordFilter.js");
 const getRandomExp = require("./utils/getRandomExp.js");
 const Level = require("./models/Level.js");
 const calculateLevel = require("./utils/calculateLevel.js");
 const connectDB = require("./config/database.js");
+const { RankCardBuilder, Font } = require("canvacord");
 
 require("dotenv").config();
 const port = process.env.PORT || 3000;
@@ -29,6 +31,7 @@ const client = new Client({
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.GuildMessageReactions,
     GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildPresences,
     GatewayIntentBits.MessageContent,
     GatewayIntentBits.GuildModeration,
   ],
@@ -69,7 +72,21 @@ client.on("guildMemberAdd", async (member) => {
 
     await member.roles.add(role);
 
-    channel.send(`Bem-vindo ao servidor, <@${member.user.id}>!`);
+    Font.loadDefault();
+    const greetingsCard = new GreetingsCard()
+      .setType("welcome")
+      .setAvatar(member.user.displayAvatarURL({ size: 256 }))
+      .setDisplayName(member.user.globalName)
+      .setMessage(`Bem-vindo(a) ao HydraMC!`);
+
+    const card = await greetingsCard.build()
+    let attachment = new AttachmentBuilder(card, {
+      name: "welcome.png"
+    })
+
+
+
+    channel.send(({ files: [attachment] }));
   } catch (error) {
     console.error(error);
   }
@@ -94,7 +111,7 @@ client.on("messageCreate", async (message) => {
         userLevel.level += 1;
 
         message.channel.send(
-          `${message.member} **Parabéns, você subiu para o level ${userLevel.level}!**`
+          `<@${message.author.id}> **Parabéns, você subiu para o level ${userLevel.level}!**`
         );
       }
 
@@ -320,8 +337,27 @@ client.on("interactionCreate", async (interaction) => {
       return;
     }
 
-    interaction.editReply({
-      content: `**O level atual de ${userObj.user.username} é ${userLevel.level}.**`,
+    const rankCardBuilder = new RankCardBuilder()
+      .setDisplayName(userObj.user.globalName)
+      .setUsername("@" + userObj.user.username)
+      .setAvatar(userObj.user.displayAvatarURL({ size: 256 }))
+      .setCurrentXP(userLevel.xp)
+      .setRequiredXP(calculateLevel(userLevel.level))
+      .setLevel(userLevel.level)
+      .setFonts(Font.loadDefault())
+      .setOverlay(90)
+      .setBackground("#23272a")
+      .setStatus(userObj.presence ? userObj.presence.status : "offline");
+
+    const rankCard = await rankCardBuilder.build();
+    console.log(rankCardBuilder)
+
+    const attachment = new AttachmentBuilder(rankCard);
+    const mentionedUser = "<@" + interaction.user.id + ">";
+
+    await interaction.editReply({
+      content: mentionedUser,
+      files: [attachment],
     });
   }
 });
