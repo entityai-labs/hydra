@@ -3,12 +3,15 @@ const {
   GatewayIntentBits,
   EmbedBuilder,
   ChannelType,
+  Collection,
   PermissionFlagsBits,
   ButtonBuilder,
   ButtonStyle,
   ActionRowBuilder,
   AttachmentBuilder,
 } = require("discord.js");
+const fs = require('node:fs');
+const path = require('node:path');
 const hasPermission = require("./utils/hasPermission.js");
 const GreetingsCard = require("./classes/GreetingsCard.js");
 const express = require("express");
@@ -36,6 +39,26 @@ const client = new Client({
     GatewayIntentBits.GuildModeration,
   ],
 });
+
+client.commands = new Collection();
+
+const foldersPath = path.join(__dirname, 'commands');
+const commandFolders = fs.readdirSync(foldersPath);
+
+for (const folder of commandFolders) {
+	const commandsPath = path.join(foldersPath, folder);
+	const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
+	for (const file of commandFiles) {
+		const filePath = path.join(commandsPath, file);
+		const command = require(filePath);
+		
+		if ('data' in command && 'execute' in command) {
+			client.commands.set(command.data.name, command);
+		} else {
+			console.log(`[WARNING] The command at ${filePath} is missing a required "data" or "execute" property.`);
+		}
+	}
+}
 
 const app = express();
 
@@ -159,30 +182,23 @@ client.on("messageCreate", async (message) => {
 client.on("interactionCreate", async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
 
-  if (interaction.commandName === "autorole-setup") {
-    if (!hasPermission(interaction, PermissionFlagsBits.Administrator)) return;
+  const command = interaction.client.commands.get(interaction.commandName);
 
-    const role = interaction.options.getRole("role");
+	if (!command) {
+		console.error(`No command matching ${interaction.commandName} was found.`);
+		return;
+	}
 
-    try {
-      const welcome = await Welcome.findOne({ guildId: interaction.guild.id });
-      if (!welcome) {
-        console.error(`Welcome data does not exists`);
-        return;
-      }
-
-      welcome.roleId = role.id;
-      await welcome.save();
-
-      const embed = new EmbedBuilder()
-        .setColor("#2B2D31")
-        .setDescription("Auto-role configurado e salvo.");
-
-      interaction.reply({ embeds: [embed] });
-    } catch (error) {
-      console.error(error);
-    }
-  }
+	try {
+		await command.execute(interaction);
+	} catch (error) {
+		console.error(error);
+		if (interaction.replied || interaction.deferred) {
+			await interaction.followUp({ content: 'There was an error while executing this command!', flags: MessageFlags.Ephemeral });
+		} else {
+			await interaction.reply({ content: 'There was an error while executing this command!', flags: MessageFlags.Ephemeral });
+		}
+	}
 
   if (interaction.commandName === "animals") {
     const animal = interaction.options.getString("type");
@@ -233,60 +249,7 @@ client.on("interactionCreate", async (interaction) => {
     }
   }
 
-  if (interaction.commandName === "wordfilter-add") {
-    if (!hasPermission(interaction, PermissionFlagsBits.Administrator)) return;
-
-    const word = interaction.options.getString("word");
-
-    try {
-      await WordFilter.findOneAndUpdate(
-        { guildId: interaction.guild.id },
-        { $addToSet: { words: { word } } },
-        { upsert: true, new: true }
-      );
-
-      const embed = new EmbedBuilder()
-        .setColor("#2B2D31")
-        .setDescription(
-          `<:Minecraft:1310372150586249237> A palavra **${word}** foi inserida com sucesso no banco de dados.`
-        );
-      interaction.reply({ embeds: [embed] });
-    } catch (error) {
-      console.error(error);
-    }
-  }
-
-  if (interaction.commandName === "welcome-setup") {
-    if (!hasPermission(interaction, PermissionFlagsBits.Administrator)) return;
-
-    const channelId = interaction.options.get("channel").value;
-    const channel = interaction.guild.channels.cache.get(channelId);
-
-    if (!channel || channel.type !== ChannelType.GuildText) {
-      return interaction.reply({
-        content: "Precisa ser um canal de texto válido.",
-        ephemeral: true,
-      });
-    }
-
-    try {
-      await Welcome.findOneAndUpdate(
-        { guildId: interaction.guild.id },
-        { guildId: interaction.guild.id, welcomeChannel: channel.id },
-        { upsert: true, new: true }
-      );
-
-      const embed = new EmbedBuilder()
-        .setColor("#2B2D31")
-        .setDescription("Canal de boas-vindas configurado e salvo.");
-
-      interaction.reply({
-        embeds: [embed],
-      });
-    } catch (error) {
-      console.error(error);
-    }
-  }
+  
 
   if (interaction.commandName === "ip") {
     const embed = new EmbedBuilder()
