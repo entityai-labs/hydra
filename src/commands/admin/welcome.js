@@ -11,7 +11,7 @@ module.exports = {
     .setName("welcome-setup")
     .setDescription("Configurar boas-vindas")
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
-    .addChannelOption((option) => option.setName("channel").setRequired(true)),
+    .addChannelOption((option) => option.setName("channel").setDescription("Canal de boas-vindas").setRequired(true)),
 
   /**
    *

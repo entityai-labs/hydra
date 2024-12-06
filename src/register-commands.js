@@ -1,6 +1,5 @@
-require("dotenv").config();
-
 const { REST, Routes } = require("discord.js");
+require("dotenv").config();
 const fs = require("node:fs");
 const path = require("node:path");
 
@@ -28,7 +27,7 @@ for (const folder of commandFolders) {
   }
 }
 
-const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
+const rest = new REST().setToken(process.env.TOKEN);
 
 (async () => {
   try {
@@ -48,6 +47,6 @@ const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
       `Successfully reloaded ${data.length} application (/) commands.`
     );
   } catch (error) {
-    console.log(`There was an error: ${error}`);
+    console.error(error);
   }
 })();

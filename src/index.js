@@ -2,12 +2,7 @@ const {
   Client,
   GatewayIntentBits,
   EmbedBuilder,
-  ChannelType,
   Collection,
-  PermissionFlagsBits,
-  ButtonBuilder,
-  ButtonStyle,
-  ActionRowBuilder,
   AttachmentBuilder,
 } = require("discord.js");
 const fs = require("node:fs");
@@ -21,7 +16,7 @@ const getRandomExp = require("./utils/getRandomExp.js");
 const Level = require("./models/Level.js");
 const calculateLevel = require("./utils/calculateLevel.js");
 const connectDB = require("./config/database.js");
-const { RankCardBuilder, Font, LeaderboardBuilder } = require("canvacord");
+const { Font } = require("canvacord");
 
 require("dotenv").config();
 const port = process.env.PORT || 3000;
@@ -203,130 +198,6 @@ client.on("interactionCreate", async (interaction) => {
         content: "There was an error while executing this command!",
         flags: MessageFlags.Ephemeral,
       });
-    }
-  }
-
-  if (interaction.commandName === "ip") {
-    const embed = new EmbedBuilder()
-      .setFooter({
-        text: `Request by ${interaction.user.globalName}`,
-        iconURL: interaction.user.displayAvatarURL(),
-      })
-      .setColor("#2B2D31")
-      .setDescription(
-        `
-    <:minecraftlogopng2:1310356302811238482> **Java Edition:** \`play.hydra-mc.xyz\`
-    <:minecraftlogopng2:1310356302811238482> **Bedrock Edition:** \`bedrock.hydra-mc.xyz\`
-
-    <:Minecraft:1310371998664232960> **Porta Padrão:** \`25976\`
-    `
-      );
-
-    interaction.reply({ embeds: [embed] });
-  }
-
-  if (interaction.commandName === "level") {
-    if (!interaction.inGuild()) {
-      interaction.reply("Esse comando só pode ser executado dentro da guilda.");
-      return;
-    }
-
-    await interaction.deferReply();
-
-    const optionUserId = interaction.options.get("member")?.value;
-    const userId = optionUserId || interaction.user.id;
-    const userObj = await interaction.guild.members.fetch(userId);
-
-    const guildId = interaction.guild.id;
-
-    const userLevel = await Level.findOne({
-      userId,
-      guildId,
-    });
-
-    if (!userLevel) {
-      interaction.editReply(
-        optionUserId
-          ? `${userObj.user.tag} não possui nenhum level ainda.`
-          : "Você não possui nenhum level."
-      );
-      return;
-    }
-
-    const rankCardBuilder = new RankCardBuilder()
-      .setDisplayName(userObj.user.globalName)
-      .setUsername("@" + userObj.user.username)
-      .setAvatar(userObj.user.displayAvatarURL({ size: 256 }))
-      .setCurrentXP(userLevel.xp)
-      .setRequiredXP(calculateLevel(userLevel.level))
-      .setLevel(userLevel.level)
-      .setFonts(Font.loadDefault())
-      .setOverlay(90)
-      .setBackground("#23272a")
-      .setStatus(userObj.presence ? userObj.presence.status : "offline");
-
-    const rankCard = await rankCardBuilder.build();
-    console.log(rankCardBuilder);
-
-    const attachment = new AttachmentBuilder(rankCard);
-    const mentionedUser = "<@" + interaction.user.id + ">";
-
-    await interaction.editReply({
-      content: mentionedUser,
-      files: [attachment],
-    });
-  }
-
-  if (interaction.commandName === "ranking") {
-    try {
-      const ranking = await Level.find({ guildId: interaction.guild.id })
-        .sort({ level: -1, xp: -1 })
-        .limit(5);
-
-      if (ranking.length === 0) {
-        return interaction.reply("O ranking não foi atualizado ou não existe.");
-      }
-
-      const players = await Promise.all(
-        ranking.map(async (player, index) => {
-          const member = await interaction.guild.members.fetch(player.userId);
-
-          return {
-            avatar: member?.user.displayAvatarURL({ size: 128 }) || "",
-            username: member?.user.username || "unknown",
-            displayName: member?.displayName || "null",
-            level: player.level,
-            xp: player.xp,
-            rank: index + 1,
-          };
-        })
-      );
-
-      Font.loadDefault();
-      const rankingCard = new LeaderboardBuilder()
-        .setBackground(
-          "https://images.rawpixel.com/image_800/cHJpdmF0ZS9sci9pbWFnZXMvd2Vic2l0ZS8yMDI0LTAzL3Jhd3BpeGVsX29mZmljZV81M19hX21pbmltYWxfYW5kX2xlc3NfZGV0YWlsX2lsbHVzdHJhdGlvbl9vZl9jaF8xN2NmMTIxNy1kNDM0LTRjYTYtYjIxYy04ZmQyMjQxMjlkN2EuanBn.jpg"
-        )
-        .setHeader({
-          title: interaction.guild.name,
-          image: interaction.guild.iconURL({ size: 256 }),
-          subtitle: `${interaction.guild.memberCount} membros`,
-        })
-        .setPlayers(players);
-
-      rankingCard.setVariant("default");
-      const image = await rankingCard.build({
-        format: "png",
-      });
-      const attachment = new AttachmentBuilder(image, {
-        name: "leaderboard.png",
-      });
-
-      await interaction.reply({
-        files: [attachment],
-      });
-    } catch (error) {
-      console.log(error);
     }
   }
 });

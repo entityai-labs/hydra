@@ -11,7 +11,7 @@ module.exports = {
     .setName("wordfilter-add")
     .setDescription("Restringir palavra no servidor")
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
-    .addStringOption((option) => option.setName("word").setRequired(true)),
+    .addStringOption((option) => option.setName("word").setDescription("A palavra proibida").setRequired(true)),
 
   /**
    *
@@ -19,6 +19,7 @@ module.exports = {
    */
   async execute(interaction) {
     const word = interaction.options.getString("word");
+
 
     try {
       await WordFilter.findOneAndUpdate(

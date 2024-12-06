@@ -11,7 +11,7 @@ module.exports = {
     .setName("autorole-setup")
     .setDescription("Configure o cargo automático no servidor")
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
-    .addRoleOption((option) => option.setName("role").setRequired(true)),
+    .addRoleOption((option) => option.setName("role").setDescription("O cargo que será entregue").setRequired(true)),
 
   /**
    *
