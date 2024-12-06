@@ -5,6 +5,7 @@ const {
 } = require("discord.js");
 const Level = require("../../models/Level");
 const { RankCardBuilder, Font } = require("canvacord");
+const calculateLevel = require("../../utils/calculateLevel")
 
 module.exports = {
   data: new SlashCommandBuilder()

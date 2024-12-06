@@ -5,7 +5,7 @@ module.exports = {
     .setName("ping")
     .setDescription("Tempo de resposta do Rick Sanchez"),
 
-  async execute(interaction) {
+  async execute(interaction) {    
     interaction.reply(
       `Pong! Tempo de resposta: ${interaction.client.ws.ping}ms`
     );

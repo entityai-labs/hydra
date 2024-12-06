@@ -51,7 +51,7 @@ module.exports = {
         name: "leaderboard.png",
       });
 
-      await interaction.reply({
+      interaction.reply({
         files: [attachment],
       });
     } catch (error) {
