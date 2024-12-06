@@ -10,12 +10,10 @@ const {
   ActionRowBuilder,
   AttachmentBuilder,
 } = require("discord.js");
-const fs = require('node:fs');
-const path = require('node:path');
-const hasPermission = require("./utils/hasPermission.js");
+const fs = require("node:fs");
+const path = require("node:path");
 const GreetingsCard = require("./classes/GreetingsCard.js");
 const express = require("express");
-const getAnimalData = require("./utils/getAnimalData.js");
 const handleStatus = require("./status.js");
 const Welcome = require("./models/Welcome.js");
 const WordFilter = require("./models/WordFilter.js");
@@ -41,23 +39,25 @@ const client = new Client({
 });
 
 client.commands = new Collection();
-
-const foldersPath = path.join(__dirname, 'commands');
+const foldersPath = path.join(__dirname, "commands");
 const commandFolders = fs.readdirSync(foldersPath);
 
 for (const folder of commandFolders) {
-	const commandsPath = path.join(foldersPath, folder);
-	const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
-	for (const file of commandFiles) {
-		const filePath = path.join(commandsPath, file);
-		const command = require(filePath);
-		
-		if ('data' in command && 'execute' in command) {
-			client.commands.set(command.data.name, command);
-		} else {
-			console.log(`[WARNING] The command at ${filePath} is missing a required "data" or "execute" property.`);
-		}
-	}
+  const commandsPath = path.join(foldersPath, folder);
+  const commandFiles = fs
+    .readdirSync(commandsPath)
+    .filter((file) => file.endsWith(".js"));
+  for (const file of commandFiles) {
+    const filePath = path.join(commandsPath, file);
+    const command = require(filePath);
+    if ("data" in command && "execute" in command) {
+      client.commands.set(command.data.name, command);
+    } else {
+      console.log(
+        `[WARNING] The command at ${filePath} is missing a required "data" or "execute" property.`
+      );
+    }
+  }
 }
 
 const app = express();
@@ -74,7 +74,7 @@ client.on("ready", async (c) => {
   await connectDB();
   handleStatus(client);
 
-  console.log(`Bot connected as ${c.user.username}!`);
+  console.log(`Bot connected as ${c.user.tag}!`);
 });
 
 client.on("guildMemberAdd", async (member) => {
@@ -184,72 +184,27 @@ client.on("interactionCreate", async (interaction) => {
 
   const command = interaction.client.commands.get(interaction.commandName);
 
-	if (!command) {
-		console.error(`No command matching ${interaction.commandName} was found.`);
-		return;
-	}
-
-	try {
-		await command.execute(interaction);
-	} catch (error) {
-		console.error(error);
-		if (interaction.replied || interaction.deferred) {
-			await interaction.followUp({ content: 'There was an error while executing this command!', flags: MessageFlags.Ephemeral });
-		} else {
-			await interaction.reply({ content: 'There was an error while executing this command!', flags: MessageFlags.Ephemeral });
-		}
-	}
-
-  if (interaction.commandName === "animals") {
-    const animal = interaction.options.getString("type");
-    const embed = new EmbedBuilder().setColor("#2B2D31");
-
-    try {
-      let imageUrl;
-      let description;
-
-      switch (animal) {
-        case "fox": {
-          const foxData = await getAnimalData("https://randomfox.ca/floof");
-          imageUrl = foxData.image;
-          embed.setTitle(
-            `<@${interaction.user.id}> **What does the fox say? 🦊 Aqui está uma raposa estilosa!**`
-          );
-          embed.setImage(imageUrl);
-          break;
-        }
-        case "cat": {
-          const catData = await getAnimalData(
-            "https://api.thecatapi.com/v1/images/search"
-          );
-          imageUrl = catData[0].url;
-          embed.setTitle(
-            `<@${interaction.user.id}> **Meooow! 🐱 Aqui está um gatinho para alegrar o seu dia!**`
-          );
-          embed.setImage(imageUrl);
-          break;
-        }
-        default:
-          return;
-      }
-
-      const button = new ButtonBuilder()
-        .setLabel("Download")
-        .setStyle(ButtonStyle.Link)
-        .setURL(imageUrl);
-      const row = new ActionRowBuilder().addComponents(button);
-
-      await interaction.reply({
-        content: description,
-        embeds: [embed],
-        components: [row],
-      });
-    } catch (error) {
-      console.error(error);
-    }
+  if (!command) {
+    console.error(`No command matching ${interaction.commandName} was found.`);
+    return;
   }
 
-  
+  try {
+    await command.execute(interaction);
+  } catch (error) {
+    console.error(error);
+    if (interaction.replied || interaction.deferred) {
+      await interaction.followUp({
+        content: "There was an error while executing this command!",
+        flags: MessageFlags.Ephemeral,
+      });
+    } else {
+      await interaction.reply({
+        content: "There was an error while executing this command!",
+        flags: MessageFlags.Ephemeral,
+      });
+    }
+  }
 
   if (interaction.commandName === "ip") {
     const embed = new EmbedBuilder()

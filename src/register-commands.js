@@ -1,101 +1,42 @@
 require("dotenv").config();
 
-const {
-  REST,
-  Routes,
-  ApplicationCommandOptionType,
-  ChannelType,
-} = require("discord.js");
+const { REST, Routes } = require("discord.js");
+const fs = require("node:fs");
+const path = require("node:path");
 
-const commands = [
-  {
-    name: "ranking",
-    description: "Visualizar o ranking dos membros"
-  },
-  {
-    name: "ip",
-    description: "Retorna o IP do servidor",
-  },
-  {
-    name: "welcome-setup",
-    description: "Configurar evento de boas-vindas",
-    options: [
-      {
-        name: "channel",
-        description: "O canal no qual será enviado a mensagem",
-        type: ApplicationCommandOptionType.Channel,
-        required: true,
-        channel_types: [ChannelType.GuildText],
-      },
-    ],
-  },
-  {
-    name: "wordfilter-add",
-    description: "Adicionar nova palavra ao filtro",
-    options: [
-      {
-        name: "word",
-        description: "Palavra que será filtrada na guilda",
-        type: ApplicationCommandOptionType.String,
-        required: true,
-      },
-    ],
-  },
-  {
-    name: "animals",
-    description: "Que tal apreciar um animal fofinho?",
-    options: [
-      {
-        name: "type",
-        description: "Selecione um animal",
-        type: ApplicationCommandOptionType.String,
-        choices: [
-          {
-            name: "fox",
-            value: "fox",
-          },
-          {
-            name: "cat",
-            value: "cat",
-          },
-        ],
-        required: true,
-      },
-    ],
-  },
-  {
-    name: "autorole-setup",
-    description: "Configure o cargo automático no servidor",
-    options: [
-      {
-        name: "role",
-        description: "Cargo que será atribuido aos novos membros",
-        type: ApplicationCommandOptionType.Role,
-        required: true,
-      },
-    ],
-  },
-  {
-    name: "level",
-    description: "Ver o level de si mesmo ou algum membro",
-    options: [
-      {
-        name: "member",
-        description: "Membro da guilda",
-        type: ApplicationCommandOptionType.Mentionable,
-        required: false,
-      },
-    ],
-  },
-];
+const commands = [];
+
+const foldersPath = path.join(__dirname, "commands");
+const commandFolders = fs.readdirSync(foldersPath);
+
+for (const folder of commandFolders) {
+  const commandsPath = path.join(foldersPath, folder);
+  const commandFiles = fs
+    .readdirSync(commandsPath)
+    .filter((file) => file.endsWith(".js"));
+
+  for (const file of commandFiles) {
+    const filePath = path.join(commandsPath, file);
+    const command = require(filePath);
+    if ("data" in command && "execute" in command) {
+      commands.push(command.data.toJSON());
+    } else {
+      console.log(
+        `[WARNING] The command at ${filePath} is missing a required "data" or "execute" property.`
+      );
+    }
+  }
+}
 
 const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
 
 (async () => {
   try {
-    console.log("Registering slash commands...");
+    console.log(
+      `Started refreshing ${commands.length} application (/) commands.`
+    );
 
-    await rest.put(
+    const data = await rest.put(
       Routes.applicationGuildCommands(
         process.env.CLIENT_ID,
         process.env.GUILD_ID
@@ -103,7 +44,9 @@ const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
       { body: commands }
     );
 
-    console.log("Slash commands were registered successfully!");
+    console.log(
+      `Successfully reloaded ${data.length} application (/) commands.`
+    );
   } catch (error) {
     console.log(`There was an error: ${error}`);
   }
