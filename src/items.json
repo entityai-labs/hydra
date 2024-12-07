@@ -1,9 +1,16 @@
 {
   "items": [
     {
-      "id": "diamond_sword",
+      "id": "minecraft:diamond_sword",
       "name": "Espada de Diamante",
+      "icon": "diamond_sword.png",
       "price": 10
+    },
+    {
+      "id": "minecraft:netherite_sword",
+      "name": "Espada de Netherite",
+      "icon": "netherite_sword.png",
+      "price": 15
     }
   ]
 }
