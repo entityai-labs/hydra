@@ -23,17 +23,17 @@ module.exports = {
   async execute(interaction) {
     const amount = interaction.options.getInteger("amount");
 
-    if (amount < 1 || amount > 100) {
+    if (amount > 100) {
       return interaction.reply({
         ephemeral: true,
-        content: `Invalid quantity '${amount}', it must be between 1 and 100.`,
+        content: `Invalid quantity '${amount}', it must be less than 100.`,
       });
     }
 
     await interaction.deferReply();
 
     try {
-      const messages = await interaction.channel.bulkDelete(amount, true);
+      const messages = await interaction.channel.bulkDelete(amount - 1, true);
 
       interaction.followUp({
         content: `Successfully deleted ${messages.size} messages.`,
