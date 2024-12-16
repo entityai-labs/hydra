@@ -32,7 +32,7 @@ module.exports = {
       Font.loadDefault();
       const greetingsCard = new GreetingsCard()
         .setType("welcome")
-        .setAvatar(member.user.displayAvatarURL({ size: 256 }))
+        .setAvatar(member.user.displayAvatarURL({ size: 256, forceStatic: true }))
         .setDisplayName(member.user.globalName)
         .setMessage(`Bem-vindo(a) ao HydraMC!`);
 
