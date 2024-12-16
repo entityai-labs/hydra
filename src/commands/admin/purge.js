@@ -11,6 +11,8 @@ module.exports = {
     .addIntegerOption((option) =>
       option
         .setName("amount")
+        .setMinValue(1)
+        .setMaxValue(10)
         .setDescription("Message amount")
         .setRequired(true)
     )
@@ -23,28 +25,19 @@ module.exports = {
   async execute(interaction) {
     const amount = interaction.options.getInteger("amount");
 
-    if (amount > 100) {
-      return interaction.reply({
-        ephemeral: true,
-        content: `Invalid quantity '${amount}', it must be less than 100.`,
-      });
-    }
-
-    await interaction.deferReply();
-
     try {
-      const messages = await interaction.channel.bulkDelete(amount - 1, true);
+      const messages = await interaction.channel.messages.fetch({
+        limit: amount,
+      });
 
-      interaction.followUp({
-        content: `Successfully deleted ${messages.size} messages.`,
+      await interaction.channel.bulkDelete(messages, true);
+
+      return interaction.reply({
+        content: `${amount} mensagens foram apagadas.`,
         ephemeral: true,
       });
     } catch (error) {
       console.error(error);
-      interaction.followUp({
-        content: `An error occurred while trying to delete messages.`,
-        ephemeral: true,
-      });
     }
   },
 };

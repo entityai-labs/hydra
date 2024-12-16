@@ -31,8 +31,10 @@ module.exports = {
     await interaction.deferReply();
 
     const optionUser = interaction.options.getUser("user");
-    const userId = optionUser || interaction.user.id;
-    const userObj = await interaction.guild.members.fetch(userId);
+    const userId = optionUser?.id || interaction.user.id;
+    const userObj = optionUser 
+  ? await interaction.guild.members.fetch(optionUser.id) 
+  : interaction.member;
 
     const guildId = interaction.guild.id;
 
@@ -53,7 +55,7 @@ module.exports = {
     const rankCardBuilder = new RankCardBuilder()
       .setDisplayName(userObj.user.globalName)
       .setUsername("@" + userObj.user.username)
-      .setAvatar(userObj.user.displayAvatarURL({ size: 256 }))
+      .setAvatar(userObj.user.displayAvatarURL({ size: 256, extension: 'png', forceStatic: true }))
       .setCurrentXP(userLevel.xp)
       .setRequiredXP(calculateLevel(userLevel.level))
       .setLevel(userLevel.level)
@@ -62,13 +64,13 @@ module.exports = {
       .setBackground("#23272a")
       .setStatus(userObj.presence ? userObj.presence.status : "offline");
 
-    const rankCard = await rankCardBuilder.build();
+    const rankCard = await rankCardBuilder.build({
+      format: "png"
+    });
 
     const attachment = new AttachmentBuilder(rankCard);
-    const mentionedUser = "<@" + interaction.user.id + ">";
 
     await interaction.editReply({
-      content: mentionedUser,
       files: [attachment],
     });
   },
